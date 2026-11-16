@@ -47,7 +47,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import kotlin.math.roundToInt
 
 enum class StatusKind(val label: String) {
     ON_TIME("On time"),
@@ -160,6 +162,34 @@ fun StatusPicker(
                 Text(text = kind.label)
             }
         }
+    }
+}
+
+//za korak od 5 minuta na rasponu 5f..60f postoji 12 vrijednosti (5, 10, ..., 60).
+//Kako steps broji samo tacke izmedju krajeva  potrebno je steps = 10.
+//sa 5f..60f i steps = 12 slider ima ukupno 14 razlicitih vrijednosti ,
+//odnosno 13 intervala sirine 55 / 13 ≈ 4.23. to nsiu cijeli brojevi (osim krajeva 5 i 60).
+
+@Composable
+fun LateMinutesSlider(
+    minutes: Int,
+    onMinutesChange: (Int) -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = if (enabled) "Late: $minutes min" else "Late: –",
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Slider(
+            value = minutes.toFloat(),
+            onValueChange = { onMinutesChange(it.roundToInt()) },
+            valueRange = 5f..60f,
+            steps = 10,
+            enabled = enabled
+        )
     }
 }
 @Composable
@@ -389,6 +419,29 @@ fun StatusPickerPreview() {
         StatusPicker(
             selected = StatusKind.LATE,
             onSelect = {}
+        )
+    }
+}
+@Preview(name = "Late Slider - Enabled", showBackground = true)
+@Composable
+fun LateMinutesSliderEnabledPreview() {
+    Attendance1Theme {
+        LateMinutesSlider(
+            minutes = 15,
+            onMinutesChange = {},
+            enabled = true
+        )
+    }
+}
+
+@Preview(name = "Late Slider - Disabled", showBackground = true)
+@Composable
+fun LateMinutesSliderDisabledPreview() {
+    Attendance1Theme {
+        LateMinutesSlider(
+            minutes = 15,
+            onMinutesChange = {},
+            enabled = false
         )
     }
 }
