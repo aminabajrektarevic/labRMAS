@@ -50,6 +50,9 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import kotlin.math.roundToInt
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Checkbox
+import androidx.compose.ui.semantics.Role
 
 enum class StatusKind(val label: String) {
     ON_TIME("On time"),
@@ -124,6 +127,11 @@ fun ProfessorScreen(modifier: Modifier=Modifier){
                     )
                 }
             }
+            ManualCheckInForm(
+                window = openWindow!!,
+                existing = checkIns,
+                onSave = { checkIns = checkIns + it }
+            )
         }
 
     }
@@ -221,6 +229,140 @@ fun SearchField(query: String, onQueryChange: (String)-> Unit, modifier: Modifie
     )
 }
 //ne paimti nista on iz preview funkcije dobije query ami i on samo to iscrta   , onquerychange je prazan pa se ne da nista napisati
+
+
+@Composable
+fun ManualCheckInForm(
+    window: Window,
+    existing: List<CheckIn>,
+    onSave: (CheckIn) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var index by rememberSaveable { mutableStateOf("") }
+    var fullName by rememberSaveable { mutableStateOf("") }
+    var statusKind by rememberSaveable { mutableStateOf(StatusKind.ON_TIME) }
+    var lateMinutes by rememberSaveable { mutableStateOf(5) }
+    var confirmed by rememberSaveable { mutableStateOf(false) }
+
+    val isIndexValid = Regex("IB\\d{3}").matches(index)
+    val isIndexError = index.isNotEmpty() && !isIndexValid
+    val isNameValid = fullName.trim().contains(" ")
+    val isNameError = fullName.isNotEmpty() && !isNameValid
+    val isFormValid = isIndexValid && isNameValid && confirmed
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Manual check-in · ${window.label}",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        OutlinedTextField(
+            value = index,
+            onValueChange = { index = it.uppercase() },
+            label = { Text("Index") },
+            singleLine = true,
+            isError = isIndexError,
+            supportingText = if (isIndexError) {
+                { Text("Format: IB + 3 digits") }
+            } else {
+                null
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = fullName,
+            onValueChange = { fullName = it },
+            label = { Text("First and last name") },
+            singleLine = true,
+            isError = isNameError,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        StatusPicker(
+            selected = statusKind,
+            onSelect = { statusKind = it }
+        )
+
+        LateMinutesSlider(
+            minutes = lateMinutes,
+            onMinutesChange = { lateMinutes = it },
+            enabled = statusKind == StatusKind.LATE
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = confirmed,
+                    role = Role.Checkbox,
+                    onValueChange = { confirmed = it }
+                )
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = confirmed,
+                onCheckedChange = null
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = "Confirmed in person")
+        }
+
+        Button(
+            onClick = {
+                val calculatedMinutes = when (statusKind) {
+                    StatusKind.ON_TIME -> window.startMinutes()
+                    StatusKind.LATE -> window.startMinutes() + lateMinutes
+                    StatusKind.ABSENT -> 0
+                }
+
+                val newCheckIn = CheckIn(
+                    student = Student(
+                        id = index.trim(),
+                        name = fullName.trim()
+                    ),
+                    window = window,
+                    status = statusKind.toStatus(lateMinutes),
+                    minutes = calculatedMinutes
+                )
+                onSave(newCheckIn)
+
+                // Vraćanje forme na početno stanje
+                index = ""
+                fullName = ""
+                statusKind = StatusKind.ON_TIME
+                lateMinutes = 5
+                confirmed = false
+            },
+            enabled = isFormValid,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Add check-in")
+        }
+    }
+}
+fun Window.startMinutes(): Int = when (this) {
+    Window.START -> 8 * 60        // 08:00 -> 480
+    Window.MIDDLE -> 10 * 60      // 10:00 -> 600
+    Window.END -> 11 * 60 + 30    // 11:30 -> 690
+}
+
+fun StatusKind.toStatus(lateMinutes: Int): CheckInStatus = when (this) {
+    StatusKind.ON_TIME -> CheckInStatus.OnTime
+    StatusKind.LATE -> CheckInStatus.Late(lateMinutes)
+    StatusKind.ABSENT -> CheckInStatus.Absent
+}
+
+
+
+
+
 @Composable
 fun StatusBadge(
     status: CheckInStatus,
