@@ -67,6 +67,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ProfessorScreen(modifier: Modifier=Modifier){
     var openWindow by rememberSaveable {mutableStateOf<Window?>(null)}
+    var checkIns by remember { mutableStateOf(sampleCheckIns) }
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
@@ -78,10 +79,13 @@ fun ProfessorScreen(modifier: Modifier=Modifier){
             onOpen = { openWindow = it }
         )
 
-        AttendanceSummary(checkIns = sampleCheckIns)
+        AttendanceSummary(checkIns = checkIns.filter{it.window==openWindow})
 
-        sampleCheckIns.forEach { item ->
-            CheckInCard(checkIn = item)
+        checkIns.filter { it.window == openWindow }.forEach { checkIn ->
+            CheckInCard(
+                checkIn = checkIn,
+                allCheckIns = checkIns
+            )
         }
     }
 }
@@ -178,7 +182,7 @@ fun CheckInStatus.color(): Color = when(this) {
         CheckInStatus.Absent -> MaterialTheme.colorScheme.outline
         is CheckInStatus.Late -> MaterialTheme.colorScheme.error
     }
-//Ovdje se pojavi error i u CheckInCard funkciji jer tu koristimo when koji zahtijeva da se svi slucajevi obrade
+
 @Composable
 fun WindowsControl(openWindow: Window?, onOpen:(Window)->Unit, modifier: Modifier= Modifier){
 
@@ -204,12 +208,9 @@ fun WindowsControl(openWindow: Window?, onOpen:(Window)->Unit, modifier: Modifie
         }
     }
 }
-//U logcatu se promijeni stanje svaki put kad je dugme kliknuto ali se to ne prikazuje na screenu
-//obicna varijabla openWindow ne moze uzrokovat rekompoziciju
-//Ako se rotira screen bez da je openWindow rememberSAeveable nece se nista zapamtiti
 
 @Composable
-fun CheckInCard(checkIn: CheckIn, modifier: Modifier= Modifier){
+fun CheckInCard(checkIn: CheckIn, modifier: Modifier= Modifier, allCheckIns: List<CheckIn>){
     var expaneded by remember { mutableStateOf(false) }
     Card(
         modifier = modifier.fillMaxWidth().clickable{expaneded=!expaneded}
@@ -217,7 +218,7 @@ fun CheckInCard(checkIn: CheckIn, modifier: Modifier= Modifier){
         Column{
             CheckInRow(checkIn = checkIn)
             if (expaneded) {
-                val studentCheckIns = sampleCheckIns.filter { it.student == checkIn.student }
+                val studentCheckIns = allCheckIns.filter { it.student == checkIn.student }
 
 
                 Column(
@@ -237,10 +238,7 @@ fun CheckInCard(checkIn: CheckIn, modifier: Modifier= Modifier){
 
     }
 }
-// it.student == checkIn.student pronalazi sve prijave jer je Student data class,
-//pa operator == uspoređuje vrijednosti atributa
-// Da Student nije data class, uspoređivale bi se memorijske reference (kao ===),
-// pa bi uslov bio tačan samo za taj jedan konkretan red, a ne za ostale prozore.
+
 @Preview(name = "Light")
 @Preview(name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
@@ -251,27 +249,27 @@ fun CheckInRowPreview() {
         }
     }
 }
-@Preview
-@Composable
-fun AttendanceSummaryPreview(){
-    AttendanceSummary(checkIns = sampleCheckIns.filter{it.window == Window.MIDDLE})
-}
-//za window = middle, rezultat je  4 2 0
-@Preview(name = "On time", showBackground = true)
-@Composable
-fun CheckInCardOnTimePreview() {
-    CheckInCard(checkIn = sampleCheckIns[0])
-}
-
-@Preview(name = "Late", showBackground = true)
-@Composable
-fun CheckInCardLatePreview() {
-    CheckInCard(checkIn = sampleCheckIns[1])
-}
-
-@Preview(name = "Absent", showBackground = true)
-@Composable
-fun CheckInCardAbsentPreview() {
-    CheckInCard(checkIn = sampleCheckIns[4])
-}
+//@Preview
+//@Composable
+//fun AttendanceSummaryPreview(){
+//    AttendanceSummary(checkIns = sampleCheckIns.filter{it.window == Window.MIDDLE})
+//}
+////za window = middle, rezultat je  4 2 0
+//@Preview(name = "On time", showBackground = true)
+//@Composable
+//fun CheckInCardOnTimePreview() {
+//    CheckInCard(checkIn = sampleCheckIns[0])
+//}
+//
+//@Preview(name = "Late", showBackground = true)
+//@Composable
+//fun CheckInCardLatePreview() {
+//    CheckInCard(checkIn = sampleCheckIns[1])
+//}
+//
+//@Preview(name = "Absent", showBackground = true)
+//@Composable
+//fun CheckInCardAbsentPreview() {
+//    CheckInCard(checkIn = sampleCheckIns[4])
+//}
 
