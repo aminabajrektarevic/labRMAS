@@ -45,6 +45,7 @@ import androidx.compose.material3.Card
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.OutlinedTextField
 
 
 class MainActivity : ComponentActivity() {
@@ -68,6 +69,7 @@ class MainActivity : ComponentActivity() {
 fun ProfessorScreen(modifier: Modifier=Modifier){
     var openWindow by rememberSaveable {mutableStateOf<Window?>(null)}
     var checkIns by remember { mutableStateOf(sampleCheckIns) }
+    var query by rememberSaveable {mutableStateOf("")}
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
@@ -78,17 +80,51 @@ fun ProfessorScreen(modifier: Modifier=Modifier){
             openWindow = openWindow,
             onOpen = { openWindow = it }
         )
-
-        AttendanceSummary(checkIns = checkIns.filter{it.window==openWindow})
-
-        checkIns.filter { it.window == openWindow }.forEach { checkIn ->
-            CheckInCard(
-                checkIn = checkIn,
-                allCheckIns = checkIns
+        if (openWindow==null){
+            Text(
+                text = "open a window to see check-ins",
+                modifier = Modifier.padding(16.dp)
             )
+        }else {
+            val windowCheckIns = checkIns.filter { it.window == openWindow }
+            val filteredCheckIns =
+                windowCheckIns.filter { it.student.name.contains(query, ignoreCase = true) }
+
+            AttendanceSummary(checkIns = checkIns.filter { it.window == openWindow })
+            SearchField(
+                query = query,
+                onQueryChange = { query = it }
+            )
+            if (filteredCheckIns.isEmpty()){
+                Text(
+                    text = "No check-ins match the filter",
+                    modifier = Modifier.padding(16.dp)
+                )
+            }else{
+                filteredCheckIns.forEach { checkIn ->
+                    CheckInCard(
+                        checkIn = checkIn,
+                        allCheckIns = checkIns
+                    )
+                }
+            }
         }
+
     }
 }
+
+@Composable
+fun SearchField(query: String, onQueryChange: (String)-> Unit, modifier: Modifier = Modifier){
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        label = { Text("Search student")},
+        placeholder = {Text("e.g. Amir")},
+        singleLine = true,
+        modifier = modifier.fillMaxWidth()
+    )
+}
+//ne paimti nista on iz preview funkcije dobije query ami i on samo to iscrta   , onquerychange je prazan pa se ne da nista napisati
 @Composable
 fun StatusBadge(
     status: CheckInStatus,
@@ -236,6 +272,16 @@ fun CheckInCard(checkIn: CheckIn, modifier: Modifier= Modifier, allCheckIns: Lis
         }
 
 
+    }
+}
+@Preview(showBackground = true)
+@Composable
+fun SearchFieldPreview() {
+    Attendance1Theme {
+        SearchField(
+            query = "ami",
+            onQueryChange = {}
+        )
     }
 }
 
