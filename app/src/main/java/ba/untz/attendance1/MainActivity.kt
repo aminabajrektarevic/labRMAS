@@ -46,9 +46,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 
-
+enum class StatusKind(val label: String) {
+    ON_TIME("On time"),
+    LATE("Late"),
+    ABSENT("Absent")
+}
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -126,6 +131,37 @@ fun ProfessorScreen(modifier: Modifier=Modifier){
 //Hedija Šišić se ne vidi jer njeno prezime sadrži 'Š' i 'š', a contains("s", ignoreCase = true) ne izjednačava 'š' i 's'.
 //Kad se uključi Only late, ostaju samo oni od tih studenata koji uz slovo 's' imaju i status Late.
 
+
+//kad bi svako radio dugme u forEach imalo svoj var selected by remember { mutableStateOf(false) }
+//svaka opcija bi imala vlastito, nezavisno stanje i klik na jednu ne bi ponistio prethodno izabrane.
+//bilo bi moguce oznaciti vise opcija istovremeno pa to vise ne bi bila radioo grupa
+// vec bi se ponasalo kao lista checkbox-ova
+
+@Composable
+fun StatusPicker(
+    selected: StatusKind,
+    onSelect: (StatusKind) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        StatusKind.entries.forEach { kind ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelect(kind) }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = (kind == selected),
+                    onClick = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = kind.label)
+            }
+        }
+    }
+}
 @Composable
 fun LateOnlySwitch(onlyLate: Boolean,onOnlyLateChange: (Boolean) -> Unit, modifier: Modifier = Modifier){
     Row(
@@ -343,6 +379,16 @@ fun LateOnlySwitchOnPreview() {
         LateOnlySwitch(
             onlyLate = true,
             onOnlyLateChange = {}
+        )
+    }
+}
+@Preview(showBackground = true)
+@Composable
+fun StatusPickerPreview() {
+    Attendance1Theme {
+        StatusPicker(
+            selected = StatusKind.LATE,
+            onSelect = {}
         )
     }
 }
