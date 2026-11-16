@@ -28,8 +28,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxWidth
-import android.graphics.Color
-
+import androidx.compose.ui.graphics.Color
+import android.content.res.Configuration
+import androidx.compose.material3.Surface
+import android.util.Log
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.Card
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 
 class MainActivity : ComponentActivity() {
@@ -38,36 +53,38 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             Attendance1Theme {
-                Scaffold(modifier = Modifier.fillMaxSize()) {
-
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    ProfessorScreen(
+                        modifier = Modifier.padding(innerPadding)
+                    )
                 }
             }
         }
     }
 }
 
+
 @Composable
-fun CheckInCard(checkIn: CheckIn) {
-    val statusText = when (checkIn.status) {
-        is CheckInStatus.OnTime -> "On time"
-        is CheckInStatus.Late -> "Late ${checkIn.status.minutes} min"
-        is CheckInStatus.Absent -> "Absent"
-    }
+fun ProfessorScreen(modifier: Modifier=Modifier){
+    var openWindow by rememberSaveable {mutableStateOf<Window?>(null)}
+    Column(
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        WindowsControl(
+            openWindow = openWindow,
+            onOpen = { openWindow = it }
+        )
 
-    Row(modifier = Modifier.padding(all = 8.dp)) {
+        AttendanceSummary(checkIns = sampleCheckIns)
 
-        Avatar(initials = checkIn.student.initials())
-        Spacer(modifier = Modifier.width(8.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Column {
-            Text(text = checkIn.student.name)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = statusText)
+        sampleCheckIns.forEach { item ->
+            CheckInCard(checkIn = item)
         }
     }
 }
-
 @Composable
 fun StatusBadge(
     status: CheckInStatus,
@@ -75,12 +92,14 @@ fun StatusBadge(
 ) {
     Text(
         text = status.label(),
+        color = status.color(),
         modifier = modifier
             .clip(MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.secondaryContainer)
             .padding(horizontal = 8.dp, vertical = 2.dp)
     )
 }
+
 @Composable
 fun AttendanceSummary(checkIns: List<CheckIn>, modifier: Modifier=Modifier){
     var navrijeme = checkIns.count{it -> it.status == CheckInStatus.OnTime}
@@ -151,16 +170,86 @@ fun CheckInRow(
     }
 }
 
+
+
 @Composable
-fun CheckInStatus.color(): Color{
-    when{
-        CheckInStatus.OnTime ->
+fun CheckInStatus.color(): Color = when(this) {
+        CheckInStatus.OnTime -> MaterialTheme.colorScheme.primary
+        CheckInStatus.Absent -> MaterialTheme.colorScheme.outline
+        is CheckInStatus.Late -> MaterialTheme.colorScheme.error
+    }
+//Ovdje se pojavi error i u CheckInCard funkciji jer tu koristimo when koji zahtijeva da se svi slucajevi obrade
+@Composable
+fun WindowsControl(openWindow: Window?, onOpen:(Window)->Unit, modifier: Modifier= Modifier){
+
+    Column(modifier = modifier.padding(16.dp)) {
+        Text(
+            text = "Open: ${openWindow?.label ?: "none"}",
+            style =MaterialTheme.typography.titleMedium )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Window.entries.forEach { w ->
+                Button(
+                    onClick = {
+                        onOpen(w)
+                        Log.d("RMAS", "now: ${w.label}")
+                    },
+                    enabled = openWindow != w
+                ) {
+                    Text(text = w.label)
+                }
+            }
+        }
     }
 }
-@Preview
+//U logcatu se promijeni stanje svaki put kad je dugme kliknuto ali se to ne prikazuje na screenu
+//obicna varijabla openWindow ne moze uzrokovat rekompoziciju
+//Ako se rotira screen bez da je openWindow rememberSAeveable nece se nista zapamtiti
+
 @Composable
-fun CheckInRowPreview(){
-    CheckInRow(sampleCheckIns[1])
+fun CheckInCard(checkIn: CheckIn, modifier: Modifier= Modifier){
+    var expaneded by remember { mutableStateOf(false) }
+    Card(
+        modifier = modifier.fillMaxWidth().clickable{expaneded=!expaneded}
+    ) {
+        Column{
+            CheckInRow(checkIn = checkIn)
+            if (expaneded) {
+                val studentCheckIns = sampleCheckIns.filter { it.student == checkIn.student }
+
+
+                Column(
+                    modifier = Modifier.padding(start = 64.dp, end = 16.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    studentCheckIns.forEach { item ->
+                        Text(
+                            text = "${item.window.label}: ${item.status.label()}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+
+
+    }
+}
+// it.student == checkIn.student pronalazi sve prijave jer je Student data class,
+//pa operator == uspoređuje vrijednosti atributa
+// Da Student nije data class, uspoređivale bi se memorijske reference (kao ===),
+// pa bi uslov bio tačan samo za taj jedan konkretan red, a ne za ostale prozore.
+@Preview(name = "Light")
+@Preview(name = "Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+fun CheckInRowPreview() {
+    Attendance1Theme {
+        Surface {
+            CheckInRow(checkIn = sampleCheckIns[0])
+        }
+    }
 }
 @Preview
 @Composable

@@ -12,6 +12,7 @@ sealed interface CheckInStatus{
     data object OnTime: CheckInStatus
     data class Late(val minutes: Int): CheckInStatus
     data object Absent: CheckInStatus
+
 }
 
 data class CheckIn(
