@@ -46,6 +46,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 
 
 class MainActivity : ComponentActivity() {
@@ -70,6 +71,7 @@ fun ProfessorScreen(modifier: Modifier=Modifier){
     var openWindow by rememberSaveable {mutableStateOf<Window?>(null)}
     var checkIns by remember { mutableStateOf(sampleCheckIns) }
     var query by rememberSaveable {mutableStateOf("")}
+    var onlyLate by rememberSaveable { mutableStateOf(false) }
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
@@ -88,12 +90,19 @@ fun ProfessorScreen(modifier: Modifier=Modifier){
         }else {
             val windowCheckIns = checkIns.filter { it.window == openWindow }
             val filteredCheckIns =
-                windowCheckIns.filter { it.student.name.contains(query, ignoreCase = true) }
+                windowCheckIns.filter { checkIn ->
+                    val matchesQuery = checkIn.student.name.contains(query, ignoreCase = true)
+                    val matchesLate = !onlyLate || checkIn.status is CheckInStatus.Late
+                    matchesQuery && matchesLate }
 
             AttendanceSummary(checkIns = checkIns.filter { it.window == openWindow })
             SearchField(
                 query = query,
                 onQueryChange = { query = it }
+            )
+            LateOnlySwitch(
+                onlyLate = onlyLate,
+                onOnlyLateChange = { onlyLate = it }
             )
             if (filteredCheckIns.isEmpty()){
                 Text(
@@ -113,6 +122,27 @@ fun ProfessorScreen(modifier: Modifier=Modifier){
     }
 }
 
+//S isključenim prekidačem ostaju samo studenti iz Window.MIDDLE koji imaju obično slovo 's' ili 'S' u imenu/prezimenu.
+//Hedija Šišić se ne vidi jer njeno prezime sadrži 'Š' i 'š', a contains("s", ignoreCase = true) ne izjednačava 'š' i 's'.
+//Kad se uključi Only late, ostaju samo oni od tih studenata koji uz slovo 's' imaju i status Late.
+
+@Composable
+fun LateOnlySwitch(onlyLate: Boolean,onOnlyLateChange: (Boolean) -> Unit, modifier: Modifier = Modifier){
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onOnlyLateChange(!onlyLate) }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = "Only late")
+        Switch(
+            checked = onlyLate,
+            onCheckedChange = null
+        )
+    }
+}
 @Composable
 fun SearchField(query: String, onQueryChange: (String)-> Unit, modifier: Modifier = Modifier){
     OutlinedTextField(
@@ -293,6 +323,27 @@ fun CheckInRowPreview() {
         Surface {
             CheckInRow(checkIn = sampleCheckIns[0])
         }
+    }
+}
+@Preview(name = "Only late - Off", showBackground = true)
+@Composable
+fun LateOnlySwitchOffPreview() {
+    Attendance1Theme {
+        LateOnlySwitch(
+            onlyLate = false,
+            onOnlyLateChange = {}
+        )
+    }
+}
+
+@Preview(name = "Only late - On", showBackground = true)
+@Composable
+fun LateOnlySwitchOnPreview() {
+    Attendance1Theme {
+        LateOnlySwitch(
+            onlyLate = true,
+            onOnlyLateChange = {}
+        )
     }
 }
 //@Preview
